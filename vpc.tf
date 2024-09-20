@@ -117,7 +117,7 @@ resource "aws_route_table_association" "cloudforce_rtb_assoc2" {
 
 #create an elastic IP
 resource "aws_eip" "cloud_natgateway_eip" {
-  vpc = true # Ensures the EIP is allocated in the VPC context
+  domain = "vpc" # Ensures the EIP is allocated in the VPC context
 }
 
 #create a NAT gateway in public subnet A
@@ -148,7 +148,6 @@ resource "aws_route_table" "NAT_Gateway_RT" {
   tags = {
     "Name" = "Route Table for NAT Gateway"
   }
-
 }
 
 #Associating route table for NAT gateway to private subnet A
@@ -166,3 +165,4 @@ resource "aws_route_table_association" "Nat_Gateway_RT_Association_B" {
   subnet_id      = aws_subnet.cloudforce_privateB.id
   route_table_id = aws_route_table.NAT_Gateway_RT.id
 }
+
