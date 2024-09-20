@@ -1,77 +1,126 @@
-step 1: [vpc service]
---create vpc
---create subnets (us-east-1a(public subnet A , private subnet A, private subnet C), 
-                us-east-1b( public subnet B, private subnet B, private subnet D))
---create internet gateway
---create route table
---create route 
-i. cloudforce_rt (destination_cidr_block = "0.0.0.0/0")
---associate route table to public subnet (A, B)
---create an elastic IP
---create a NAT gateway in public subnet A & allocate Elastic IP to the NAT Gateway
---create a Route Table for the NAT Gateway ("0.0.0.0/0")
---Associating route table for NAT gateway to (private subnet A & private subnet B)
 
-
-
-step 2: [Create a security group for EC2 instances]
---create security group instancesg [allow traffic from port 80, 3000, 22 && allow all outgoing traffic]
---Inbound rule for port 80 (HTTP) (allow)
---Inbound rule for port 3000 (Custom) (allow)
---Inbound rule for port 22 (SSH)
---Outbound rule (Allow all outbound traffic)
-
-step 3: [Create a frontend launchweb template][launchweb.tf ]
---create launch template for frontend include: 
-    (image_id, instance_type, security_group[instancesg], 
-    associate public_ip, create_before_destroy = true,
-    user_data[frontenddata])
-
-step 4: Create user data for front end web
-
-step 5: [Create a launch template for the application server][launchapp.tf ]
---create launch template for application server include: 
-    (image_id, instance_type, security_groups[instancesg],
-    associate_public_ip_add, create_before_destroy = true,
-    user_data[backenddata.sh])
-
-step 6: Create user data for backend end web
-
-step 7: Create an internet facing load balancer [subnets A&B, sg= lbinstancesgB]
---create aws_lb (frontend_lb)
-                (load_balancer_type = "application", sg = lbinstancesgB,
-                subnets(publicA, publicB))
---create aws_lb_target_group (frontendTG) 
-                (port = 80(http), health_checks )
---create aws_lb_listener (frontendListener)
-                (port = 80 (http), forwards, tg_arn = frontendTG)
-
-step 8: create a load balancer for our backend service
-Here the target groups are the instances on private subnets.
---create aws_lb(backend-lb)
-                (load_balancer_type = "application", sg = lbsecuritygroupB,
-                subnets(privateA, privateB))
---create aws_lb_target_group (backendTG)
-                (port = 80(http), health_checks)
---create aws_lb_listener (backendListener)
-                (port = 80 (http), forwards, tg_arn = backendTG)
-
-step 9: create security groups for loadbalancers [open port 80 & 3000 for ingress]
-NB: sg = lbinstancesgB (for frontendlb in public subnets A & B)
-    sg = lbsecuritygroupB (for backend-lb in private subnets A & B)
-
-step 10: Create an autoscaling group for the frontend service or web servers.
---create aws_autoscaling_group (frontendASG)
-        (min_size = 2, max_size = 6, health_check_type = "EC2", 
-        publicA & publicB, target_group_arns = aws_lb_target_group.frontendTG.arn)
-
-step 11: 11. Create an autoscaling group for the backend service or application servers.
---create aws_autoscaling_group (backendASG)
-        (min_size = 2, max_size = 6, health_check_type = "EC2", 
-        privateA & privateB, target_group_arns = aws_lb_target_group.backendTG.arn)
 
 ![architecture of diagram](https://github.com/user-attachments/assets/98ea43e6-68d2-4689-9b6f-bd1e1f8d47aa)
 
 
 https://dev.to/ephantus_gachomba_/-deploying-a-secure-three-tier-aws-architecture-with-terraform-3nfc
+
+# Deploying a Secure Three-Tier AWS Architecture with Terraform
+
+## Step 1: VPC Service
+- **Create VPC**
+- **Create Subnets**:
+    - `us-east-1a` (Public Subnet A, Private Subnet A, Private Subnet C)
+    - `us-east-1b` (Public Subnet B, Private Subnet B, Private Subnet D)
+- **Create Internet Gateway**
+- **Create Route Table**
+- **Create Route**
+    - `cloudforce_rt`: `destination_cidr_block = "0.0.0.0/0"`
+- **Associate Route Table to Public Subnets**: (A, B)
+- **Create an Elastic IP**
+- **Create a NAT Gateway in Public Subnet A and associate Elastic IP to the NAT Gateway**
+- **Create a Route Table for NAT Gateway**: `destination_cidr_block = "0.0.0.0/0"`
+- **Associate Route Table for NAT Gateway**: (Private Subnet A & Private Subnet B)
+
+---
+
+## Step 2: Create a Security Group for EC2 Instances
+- **Create Security Group `instancesg`**: 
+    - Allow traffic on port 80 (HTTP), port 3000 (Custom), port 22 (SSH)
+    - Allow all outgoing traffic
+- **Inbound Rules**:
+    - Port 80 (HTTP): Allow
+    - Port 3000 (Custom): Allow
+    - Port 22 (SSH): Allow
+- **Outbound Rules**:
+    - Allow all outgoing traffic
+
+---
+
+## Step 3: Create a Frontend Launch Template (`launchweb.tf`)
+- **Create Launch Template for Frontend**:
+    - `image_id`
+    - `instance_type`
+    - Security group: `instancesg`
+    - Associate public IP
+    - `create_before_destroy = true`
+    - `user_data`: `frontenddata`
+
+---
+
+## Step 4: Create User Data for Frontend Web
+- Include user data script to set up the frontend web server.
+
+---
+
+## Step 5: Create a Launch Template for the Application Server (`launchapp.tf`)
+- **Create Launch Template for Application Server**:
+    - `image_id`
+    - `instance_type`
+    - Security group: `instancesg`
+    - Associate public IP
+    - `create_before_destroy = true`
+    - `user_data`: `backenddata.sh`
+
+---
+
+## Step 6: Create User Data for Backend Web
+- Include user data script to set up the backend web server.
+
+---
+
+## Step 7: Create an Internet Facing Load Balancer
+- **Create Load Balancer for Frontend (`aws_lb.frontend_lb`)**:
+    - Load balancer type: `application`
+    - Security group: `lbinstancesgB`
+    - Subnets: Public Subnets A & B
+- **Create Target Group for Frontend (`aws_lb_target_group.frontendTG`)**:
+    - Port 80 (HTTP)
+    - Health checks
+- **Create Listener for Frontend (`aws_lb_listener.frontendListener`)**:
+    - Port 80 (HTTP)
+    - Forward to target group: `frontendTG`
+
+---
+
+## Step 8: Create a Load Balancer for Backend Service
+- **Create Load Balancer for Backend (`aws_lb.backend_lb`)**:
+    - Load balancer type: `application`
+    - Security group: `lbsecuritygroupB`
+    - Subnets: Private Subnets A & B
+- **Create Target Group for Backend (`aws_lb_target_group.backendTG`)**:
+    - Port 80 (HTTP)
+    - Health checks
+- **Create Listener for Backend (`aws_lb_listener.backendListener`)**:
+    - Port 80 (HTTP)
+    - Forward to target group: `backendTG`
+
+---
+
+## Step 9: Create Security Groups for Load Balancers
+- **Security Group for Frontend Load Balancer** (`lbinstancesgB`):
+    - Open ports 80 & 3000 for ingress
+- **Security Group for Backend Load Balancer** (`lbsecuritygroupB`):
+    - Open port 80 for ingress
+    - Open port 3000 for ingress
+
+---
+
+## Step 10: Create an Auto Scaling Group for Frontend Service
+- **Create Auto Scaling Group for Frontend (`aws_autoscaling_group.frontendASG`)**:
+    - Min size: `2`
+    - Max size: `6`
+    - Health check type: `EC2`
+    - Public subnets: A & B
+    - Target group ARNs: `aws_lb_target_group.frontendTG.arn`
+
+---
+
+## Step 11: Create an Auto Scaling Group for Backend Service
+- **Create Auto Scaling Group for Backend (`aws_autoscaling_group.backendASG`)**:
+    - Min size: `2`
+    - Max size: `6`
+    - Health check type: `EC2`
+    - Private subnets: A & B
+    - Target group ARNs: `aws_lb_target_group.backendTG.arn`
 
