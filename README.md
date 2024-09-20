@@ -19,13 +19,10 @@ All the infrstructure should be crerated using IaC i.e. Terraform and not via th
 - **Security Groups**: Define security groups to control inbound and outbound traffic.
 - **CloudTrail**: Enable AWS CloudTrail for logging API activity.
 - **IAM Policies**: Create least privilege IAM roles and policies for resources.
-
-**Starter Terraform Files**
-In this Repository you will find the Terraform files to get you started, feel free to use them or any other set of files to get you started depending on your level of Terraform knowledge. 
+ 
 
 This infrastructure is inspired by an awesome blog by one of our members, Macrine on how to create a 3-Tier AWS Architecture on AWS using Terraform I would recommend you read and implement including recreating the architectural diagram.
 
-- [Terraform (IaC) to provision Autoscaling groups and application load balancer](https://medium.com/@marcrinemm/terraform-iac-to-provision-autoscaling-groups-and-application-load-balancer-7c1a51c7b070) 
 
 
 
