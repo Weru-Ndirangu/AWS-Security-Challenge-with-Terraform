@@ -1,44 +1,77 @@
-# **CloudForce Sky Community Weekly Challenge: Deploy and Secure an AWS Infrastructure with Terraform**
-
-## **Challenge Overview**  
-This challenge focuses on deploying a **secure** three-tier AWS architecture using Terraform. You will implement a Virtual Private Cloud (VPC) with public and private subnets across two availability zones, leveraging a NAT instance/gateway, load balancer, and Auto Scaling Groups (ASGs). Your infrastructure will align with the Security Pillar of the AWS Well-Architected Framework, utilizing IAM roles, encryption, and monitoring services.
-
-You’ll start with the provided starter Terraform files and improve them by adding security enhancements with the objective to help you gain hands-on experience in managing infrastructure as code (IaC) and implementing security in the AWS cloud.
-
-## **Challenge Requirements**
-1. **Free Tier Usage**: All AWS services used must be within the [AWS Free Tier](https://aws.amazon.com/free/) to minimize costs.
-2. **Cloud Security Focus**: Implement security measures using IAM, encryption, AWS Config, CloudTrail, and any other other free AWS security services.
-3. **AWS Architectural Diagram**: Create a visual diagram of your AWS infrastructure, highlighting the security components using [draw.io](https://draw.io)
-4. **Terraform Files**: Use Terraform to manage and deploy the infrastructure. Starter Terraform files will be provided. To get started on Terraform you can use the Official [AWS Tutorials](https://developer.hashicorp.com/terraform/tutorials/aws-get-started) from HashiCorp
-
-## **Infrastructure Details**
-All the infrstructure should be crerated using IaC i.e. Terraform and not via the AWS Management Console. 
-- **VPC**: Create a Virtual Private Cloud (VPC) with public and private subnets.
-- **EC2 Instances**: Deploy an EC2 instance in the private subnet with an IAM role that restricts access.
-- **S3 Bucket**: Set up an S3 bucket with encryption and appropriate IAM policies for secure access.
-- **Security Groups**: Define security groups to control inbound and outbound traffic.
-- **CloudTrail**: Enable AWS CloudTrail for logging API activity.
-- **IAM Policies**: Create least privilege IAM roles and policies for resources.
- 
-
-This infrastructure is inspired by an awesome blog by one of our members, Macrine on how to create a 3-Tier AWS Architecture on AWS using Terraform I would recommend you read and implement including recreating the architectural diagram.
+step 1: [vpc service]
+--create vpc
+--create subnets (us-east-1a(public subnet A , private subnet A, private subnet C), 
+                us-east-1b( public subnet B, private subnet B, private subnet D))
+--create internet gateway
+--create route table
+--create route 
+i. cloudforce_rt (destination_cidr_block = "0.0.0.0/0")
+--associate route table to public subnet (A, B)
+--create an elastic IP
+--create a NAT gateway in public subnet A & allocate Elastic IP to the NAT Gateway
+--create a Route Table for the NAT Gateway ("0.0.0.0/0")
+--Associating route table for NAT gateway to (private subnet A & private subnet B)
 
 
 
+step 2: [Create a security group for EC2 instances]
+--create security group instancesg [allow traffic from port 80, 3000, 22 && allow all outgoing traffic]
+--Inbound rule for port 80 (HTTP) (allow)
+--Inbound rule for port 3000 (Custom) (allow)
+--Inbound rule for port 22 (SSH)
+--Outbound rule (Allow all outbound traffic)
 
-## **Challenge Outcomes**
-By the end of this challenge, you will:
-- Deploy a secure AWS environment using Terraform.
-- Implement and improve basic security practices including IAM, encryption, and logging.
-- Align your infrastructure with the AWS Well-Architected Framework's Security Pillar.
-- Gain hands-on experience on infrastructure as code and cloud security.
+step 3: [Create a frontend launchweb template][launchweb.tf ]
+--create launch template for frontend include: 
+    (image_id, instance_type, security_group[instancesg], 
+    associate public_ip, create_before_destroy = true,
+    user_data[frontenddata])
 
-## **Deliverables**
-You will have three deliverables to succesfully complete the challenge:
-1. **GitHub Repository**: Submit your updated and functional Terraform code and improvements in a [GitHub repository](https://github.com/).
-2. **Blog Post**: Write a blog post on [Medium](https://medium.com), [Hashnode](https://hashnode.com/) or [Dev.to](https://dev.to/) detailing your approach, the security enhancements you implemented, and how it aligns with the AWS Well-Architected Framework. Make sure you include your AWS Architectral diagram from [draw.io](https://draw.io). Ensure you use the AWS 2024 Icons 
-3. **Security Best Practices**: Include recommendations for further security improvements based on AWS best practices from the [Security Pillar](https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/welcome.html?did=wp_card&trk=wp_card) of the [AWS Well-Architected Framework](https://aws.amazon.com/architecture/well-architected/)
+step 4: Create user data for front end web
+
+step 5: [Create a launch template for the application server][launchapp.tf ]
+--create launch template for application server include: 
+    (image_id, instance_type, security_groups[instancesg],
+    associate_public_ip_add, create_before_destroy = true,
+    user_data[backenddata.sh])
+
+step 6: Create user data for backend end web
+
+step 7: Create an internet facing load balancer [subnets A&B, sg= lbinstancesgB]
+--create aws_lb (frontend_lb)
+                (load_balancer_type = "application", sg = lbinstancesgB,
+                subnets(publicA, publicB))
+--create aws_lb_target_group (frontendTG) 
+                (port = 80(http), health_checks )
+--create aws_lb_listener (frontendListener)
+                (port = 80 (http), forwards, tg_arn = frontendTG)
+
+step 8: create a load balancer for our backend service
+Here the target groups are the instances on private subnets.
+--create aws_lb(backend-lb)
+                (load_balancer_type = "application", sg = lbsecuritygroupB,
+                subnets(privateA, privateB))
+--create aws_lb_target_group (backendTG)
+                (port = 80(http), health_checks)
+--create aws_lb_listener (backendListener)
+                (port = 80 (http), forwards, tg_arn = backendTG)
+
+step 9: create security groups for loadbalancers [open port 80 & 3000 for ingress]
+NB: sg = lbinstancesgB (for frontendlb in public subnets A & B)
+    sg = lbsecuritygroupB (for backend-lb in private subnets A & B)
+
+step 10: Create an autoscaling group for the frontend service or web servers.
+--create aws_autoscaling_group (frontendASG)
+        (min_size = 2, max_size = 6, health_check_type = "EC2", 
+        publicA & publicB, target_group_arns = aws_lb_target_group.frontendTG.arn)
+
+step 11: 11. Create an autoscaling group for the backend service or application servers.
+--create aws_autoscaling_group (backendASG)
+        (min_size = 2, max_size = 6, health_check_type = "EC2", 
+        privateA & privateB, target_group_arns = aws_lb_target_group.backendTG.arn)
+
+![architecture of diagram](https://github.com/user-attachments/assets/98ea43e6-68d2-4689-9b6f-bd1e1f8d47aa)
 
 
-## **Bonus Challenge**
-Improve the security of the application by restricting access to the Application Load Balancer using Cloudfront. There are several ways of doing (e.g. Georestriction) this choose one and implement it on your terraform code and be sure to include it on your repository and blog. 
+https://dev.to/ephantus_gachomba_/-deploying-a-secure-three-tier-aws-architecture-with-terraform-3nfc
+
