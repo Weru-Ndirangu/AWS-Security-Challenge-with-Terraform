@@ -124,3 +124,8 @@ https://dev.to/ephantus_gachomba_/-deploying-a-secure-three-tier-aws-architectur
     - Private subnets: A & B
     - Target group ARNs: `aws_lb_target_group.backendTG.arn`
 
+## Step 12: Create s3 bucket & cloudtrails
+- **create aws_s3_bucket (cloudfront_trail_bucket)**
+--data "aws_iam_policy_document" "cloudfront_trail_policy"
+--"aws_cloudtrail" "cloudfront_trail"
+
